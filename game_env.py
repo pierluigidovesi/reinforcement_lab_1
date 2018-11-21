@@ -52,9 +52,7 @@ class Env:
 
         actions_array = self.get_actions(agent_pos)
         new_states = []
-        print("qui")
         for i in range(np.size(actions_array)):
-            print(i)
             if actions_array[i] == 1:
                 if i == 0:
                     new_agent_pos = [agent_pos[0] - 1, agent_pos[1]]
@@ -83,10 +81,15 @@ class Env:
 
     # plot maze of a state
     def plot_state(self,state):
-        map = np.zeros(6, 5)
-        map[walls[:, 0]] = 1
-        map[state[0]] = 2
-        map[state[1]] = 3
+        map = np.zeros((6, 5))
+        # add walls
+        print(np.array([item[0] for item in walls]))
+        map[np.array([item[0] for item in walls])] = 1
+        print(map)
+        # add agent pos
+        #map[state[0]] = 2
+        # add mino pos
+        #map[state[1]] = 3
 
         plt.pcolormesh(map)
         plt.axes().set_aspect('equal')  # set the x and y axes to the same scale
