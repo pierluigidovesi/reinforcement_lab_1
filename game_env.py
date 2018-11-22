@@ -179,7 +179,7 @@ def get_movement_given_action(action, state):
         pos[1] -= 1
     return pos
 
-
+#maze_map = np.zeros(maze_max)
 def main():
     new_run = EnvAndPolicy()
     new_run.main_loop(15)
@@ -189,7 +189,7 @@ def main():
     state = [[0, 0], [4, 4]]
     while state[0] != [4,4]:
         index = new_run.get_index(state, step)
-        print(index)
+        #print(index)
         action = a_star[index]
 
         # player movement
@@ -205,8 +205,14 @@ def main():
                 break
 
         step += 1
+        print(" _______________________", step)
+        maze_map = np.zeros(maze_max)
+        maze_map[tuple(state[0])] = 1
+        maze_map[tuple(state[1])] = 2
+        print(maze_map)
 
-    print(new_run.get_index(state, step))
+
+    #print(new_run.get_index(state, step))
 
 
 if __name__ == "__main__":
