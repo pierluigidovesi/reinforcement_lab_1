@@ -15,131 +15,69 @@ walls = [[[0, 1], [0, 2]],
          [[4, 3], [4, 5]]]
 
 maze_max = [4, 5]
-goal = [4, 4]
-horizon = 15
-v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
-a_star = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
 
-
-class EnvAndPolicy:
+#class maze
+class Env:
     # init maze
     def __init__(self):
         self.walls = walls
-        self.maze_max = maze_max
-        self.goal = goal
-        self.horizon = horizon
-        self.v_star = v_star
-        self.a_star = a_star
 
     # possible_actions
-    def get_actions(self, state):
-        agent_pos = state[0]
+    def get_actions(self, agent_pos):
         assert agent_pos[0] < maze_max[0] and agent_pos[1] < maze_max[1]
-
-        actions_list = []
-        if self.reward(state) != 0:
-            return actions_list
-
+        actions_array = np.zeros(5)
         move_north = [agent_pos, [agent_pos[0] - 1, agent_pos[1]]]
         move_south = [agent_pos, [agent_pos[0] + 1, agent_pos[1]]]
         move_east  = [agent_pos, [agent_pos[0], agent_pos[1] + 1]]
-        move_west = [agent_pos, [agent_pos[0], agent_pos[1] - 1]]
+        move_weast = [agent_pos, [agent_pos[0], agent_pos[1] - 1]]
 
         if agent_pos[0] > 0 and not (move_north in walls) and not (move_north[::-1] in walls):
-            actions_list.append(0)
+            actions_array[0] = 1
             #print("north")
         if agent_pos[0] < maze_max[0] and not (move_south in walls) and not (move_south[::-1] in walls):
-            actions_list.append(1)
+            actions_array[2] = 1
             #print("south")
-        if agent_pos[1] > 0 and not (move_west in walls) and not (move_west[::-1] in walls):
-            actions_list.append(2)
-            #print("west")
+        if agent_pos[1] > 0 and not (move_weast in walls) and not (move_weast[::-1] in walls):
+            actions_array[3] = 1
+            #print("weast")
         if agent_pos[1] < maze_max[1] and not (move_east in walls) and not (move_east[::-1] in walls):
-            actions_list.append(3)
+            actions_array[1] = 1
             #print("east")
-        actions_list.append(4)
+        actions_array[4] = 1
 
-        return actions_list
+        return actions_array
 
-    def get_states_given_action(self, state, action):
-        agent_pos = state[0]
-        mino_pos = state[1]
+    # possible_next_states
+    def get_actions_and_states(self, agent_pos, mino_pos):
 
+        actions_array = self.get_actions(agent_pos)
         new_states = []
+        for i in range(np.size(actions_array)):
+            if actions_array[i] == 1:
+                if i == 0:
+                    new_agent_pos = [agent_pos[0] - 1, agent_pos[1]]
+                if i == 1:
+                    new_agent_pos = [agent_pos[0], agent_pos[1] + 1]
+                if i == 2:
+                    new_agent_pos = [agent_pos[0] + 1, agent_pos[1]]
+                if i == 3:
+                    new_agent_pos = [agent_pos[0], agent_pos[1] - 1]
+                if i == 4:
+                    new_agent_pos = agent_pos
 
-        if action == 0:
-            new_agent_pos = [agent_pos[0] - 1, agent_pos[1]]
-        elif action == 1:
-            new_agent_pos = [agent_pos[0], agent_pos[1] + 1]
-        elif action == 2:
-            new_agent_pos = [agent_pos[0] + 1, agent_pos[1]]
-        elif action == 3:
-            new_agent_pos = [agent_pos[0], agent_pos[1] - 1]
-        elif action == 4:
-            new_agent_pos = agent_pos
+                new_mino_pos = [mino_pos[0], mino_pos[1]+1]
+                new_states.append([new_agent_pos, new_mino_pos])
 
-        new_mino_pos = [mino_pos[0], mino_pos[1]+1]
-        if new_mino_pos[1]<=maze_max[1]:
-            new_states.append([new_agent_pos, new_mino_pos])
+                new_mino_pos = [mino_pos[0], mino_pos[1]-1]
+                new_states.append([new_agent_pos, new_mino_pos])
 
-        new_mino_pos = [mino_pos[0], mino_pos[1]-1]
-        if new_mino_pos[1]>=0:
-            new_states.append([new_agent_pos, new_mino_pos])
+                new_mino_pos = [mino_pos[0]+1, mino_pos[1]]
+                new_states.append([new_agent_pos, new_mino_pos])
 
-        new_mino_pos = [mino_pos[0]+1, mino_pos[1]]
-        if new_mino_pos[0]<=maze_max[0]:
-            new_states.append([new_agent_pos, new_mino_pos])
-
-        new_mino_pos = [mino_pos[0]-1, mino_pos[1]]
-        if new_mino_pos[0]>=0:
-            new_states.append([new_agent_pos, new_mino_pos])
+                new_mino_pos = [mino_pos[0]-1, mino_pos[1]]
+                new_states.append([new_agent_pos, new_mino_pos])
 
         return new_states
-
-    def reward(self, state):
-        if state[0] == state[1]:
-            return -1
-        elif state[0] == goal:
-            return 1
-        else:
-            return 0
-
-    def prob_given_action(self, new_states):
-        return 1/len(new_states)
-
-    def get_index(self, state, step):
-        index_state_time = state
-        index_state_time.append(step)
-        index_state_time = [item for sublist in index_state_time for item in sublist]
-        return tuple(index_state_time)
-
-    def fill_value_and_policy(self, state, step):
-        value = np.array(np.ones(5) * -np.inf)
-        possible_actions = self.get_actions(state)
-        if self.reward(state) != 0:
-            v_star[self.get_index(state, step)] = self.reward(state)
-
-        for action in possible_actions:
-            value[action] = self.reward(state)
-            possible_states = self.get_states_given_action(state, action)
-            for next_state in possible_states:
-                value[action] += self.prob_given_action(possible_states) * v_star[self.get_index(next_state, step+1)]
-        v_star[self.get_index(state, step)] = np.max(value)
-        a_star[self.get_index(state, step)] = np.argmax(value)
-
-        return 0
-
-    def main_loop(self, horizon=horizon):
-        for i in range(horizon, -1, -1):
-            for x in range(maze_max[0]):
-                for y in range(maze_max[1]):
-                    for z in range(maze_max[0]):
-                        for h in range(maze_max[1]):
-                            state = [[x, y], [z, h]]
-                            self.fill_value_and_policy(state, i)
-
-
-
 
     # plot maze of a state
     def plot_state(self,state):
