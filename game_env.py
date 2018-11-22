@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import copy
+from random import randint
 
 walls = [[[0, 1], [0, 2]],
          [[1, 1], [1, 2]],
@@ -13,10 +14,10 @@ walls = [[[0, 1], [0, 2]],
          [[3, 1], [4, 1]],
          [[3, 2], [4, 2]],
          [[3, 3], [4, 3]],
-         [[3, 4], [4, 5]],
-         [[4, 3], [4, 5]]]
+         [[3, 4], [4, 4]],
+         [[4, 3], [4, 4]]]
 
-maze_max = [4, 5]
+maze_max = [5, 6]
 goal = [4, 4]
 horizon = 15
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
@@ -44,21 +45,21 @@ class EnvAndPolicy:
 
         move_north = [agent_pos, [agent_pos[0] - 1, agent_pos[1]]]
         move_south = [agent_pos, [agent_pos[0] + 1, agent_pos[1]]]
-        move_east  = [agent_pos, [agent_pos[0], agent_pos[1] + 1]]
+        move_east = [agent_pos, [agent_pos[0], agent_pos[1] + 1]]
         move_west = [agent_pos, [agent_pos[0], agent_pos[1] - 1]]
 
         if agent_pos[0] > 0 and not (move_north in walls) and not (move_north[::-1] in walls):
             actions_list.append(0)
-            #print("north")
-        if agent_pos[0] < maze_max[0] and not (move_south in walls) and not (move_south[::-1] in walls):
-            actions_list.append(1)
-            #print("south")
-        if agent_pos[1] > 0 and not (move_west in walls) and not (move_west[::-1] in walls):
+            # print("north")
+        if agent_pos[0] < maze_max[0] - 1 and not (move_south in walls) and not (move_south[::-1] in walls):
             actions_list.append(2)
-            #print("west")
-        if agent_pos[1] < maze_max[1] and not (move_east in walls) and not (move_east[::-1] in walls):
+            # print("south")
+        if agent_pos[1] > 0 and not (move_west in walls) and not (move_west[::-1] in walls):
             actions_list.append(3)
-            #print("east")
+            # print("west")
+        if agent_pos[1] < maze_max[1] - 1 and not (move_east in walls) and not (move_east[::-1] in walls):
+            actions_list.append(1)
+            # print("east")
         actions_list.append(4)
 
         return actions_list
@@ -80,20 +81,20 @@ class EnvAndPolicy:
         elif action == 4:
             new_agent_pos = agent_pos
 
-        new_mino_pos = [mino_pos[0], mino_pos[1]+1]
-        if new_mino_pos[1]<=maze_max[1]:
+        new_mino_pos = [mino_pos[0], mino_pos[1] + 1]
+        if new_mino_pos[1] < maze_max[1]:
             new_states.append([new_agent_pos, new_mino_pos])
 
-        new_mino_pos = [mino_pos[0], mino_pos[1]-1]
-        if new_mino_pos[1]>=0:
+        new_mino_pos = [mino_pos[0], mino_pos[1] - 1]
+        if new_mino_pos[1] >= 0:
             new_states.append([new_agent_pos, new_mino_pos])
 
-        new_mino_pos = [mino_pos[0]+1, mino_pos[1]]
-        if new_mino_pos[0]<=maze_max[0]:
+        new_mino_pos = [mino_pos[0] + 1, mino_pos[1]]
+        if new_mino_pos[0] < maze_max[0]:
             new_states.append([new_agent_pos, new_mino_pos])
 
-        new_mino_pos = [mino_pos[0]-1, mino_pos[1]]
-        if new_mino_pos[0]>=0:
+        new_mino_pos = [mino_pos[0] - 1, mino_pos[1]]
+        if new_mino_pos[0] >= 0:
             new_states.append([new_agent_pos, new_mino_pos])
 
         return new_states
@@ -107,7 +108,7 @@ class EnvAndPolicy:
             return 0
 
     def prob_given_action(self, new_states):
-        return 1/len(new_states)
+        return 1 / len(new_states)
 
     def get_index(self, state, step):
         index_state_time = copy.deepcopy(state)
@@ -126,17 +127,19 @@ class EnvAndPolicy:
             for action in possible_actions:
                 value[action] = self.reward(state)
                 possible_states = self.get_states_given_action(state, action)
+                # print(possible_states)
                 for next_state in possible_states:
-                    next_state_index = self.get_index(next_state, step+1)
-                    print(next_state_index)
+                    next_state_index = self.get_index(next_state, step + 1)
+                    # print(next_state_index)
                     value[action] += self.prob_given_action(possible_states) * v_star[next_state_index]
+
             v_star[matrix_index] = np.max(value)
             a_star[matrix_index] = np.argmax(value)
 
         return 0
 
     def main_loop(self, horizon=horizon):
-        for i in tqdm(range(horizon-1, -1, -1)):
+        for i in tqdm(range(horizon - 1, -1, -1)):
             for x in range(maze_max[0]):
                 for y in range(maze_max[1]):
                     for z in range(maze_max[0]):
@@ -145,16 +148,16 @@ class EnvAndPolicy:
                             self.fill_value_and_policy(state, i)
 
     # plot maze of a state
-    def plot_state(self,state):
+    def plot_state(self, state):
         map = np.zeros((6, 5))
         # add walls
-        print(np.array([item[0] for item in walls]))
+        # print(np.array([item[0] for item in walls]))
         map[np.array([item[0] for item in walls])] = 1
-        print(map)
+        # print(map)
         # add agent pos
-        #map[state[0]] = 2
+        # map[state[0]] = 2
         # add mino pos
-        #map[state[1]] = 3
+        # map[state[1]] = 3
 
         plt.pcolormesh(map)
         plt.axes().set_aspect('equal')  # set the x and y axes to the same scale
@@ -163,10 +166,47 @@ class EnvAndPolicy:
         plt.axes().invert_yaxis()  # invert the y-axis so the first row of data is at the top
         plt.show()
 
+
+def get_movement_given_action(action, state):
+    pos = copy.deepcopy(state)
+    if action == 0:
+        pos[0] -= 1
+    elif action == 1:
+        pos[1] += 1
+    elif action == 2:
+        pos[0] += 1
+    elif action == 3:
+        pos[1] -= 1
+    return pos
+
+
 def main():
     new_run = EnvAndPolicy()
     new_run.main_loop(15)
     print("done")
+
+    step = 0
+    state = [[0, 0], [4, 4]]
+    while state[0] != [4,4]:
+        index = new_run.get_index(state, step)
+        print(index)
+        action = a_star[index]
+
+        # player movement
+        state[0] = get_movement_given_action(action, state[0])
+
+        # mino movement
+        while True:
+            mino_action = randint(0, 3)
+            nmp = get_movement_given_action(mino_action, state[1])
+            #print(mino_action)
+            if 0 < nmp[0] < maze_max[0] and 0 < nmp[1] < maze_max[1]:
+                state[1] = nmp
+                break
+
+        step += 1
+
+    print(new_run.get_index(state, step))
 
 
 if __name__ == "__main__":
