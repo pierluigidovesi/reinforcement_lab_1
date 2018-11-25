@@ -22,7 +22,7 @@ goal = [4, 4]
 horizon = 15
 tot_episodes = 100000
 mino_stand_still = False
-verbose = 0
+verbose = 1
 
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
@@ -205,7 +205,7 @@ def main():
                 maze_map[tuple(state[1])] = 2
                 print(maze_map)
             # end while
-        distribution_array[step-1] += 1
+        distribution_array[step] += 1
     plt.grid()
     plt.plot(distribution_array)
     plt.show()
