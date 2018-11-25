@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import linalg as LA
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import copy
@@ -24,11 +25,11 @@ tot_episodes = 100000
 precision = 1
 discount = 1 - 1 / 30
 mino_stand_still = False
-verbose = 0
+verbose = 1
 
 # init values
-v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
-a_star = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
+v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
+a_star = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
 
 class EnvAndPolicy:
     # init maze
@@ -143,6 +144,8 @@ class EnvAndPolicy:
 
             v_star[matrix_index] = np.max(value)
             a_star[matrix_index] = np.argmax(value)
+            #print(v_star)
+            #print(a_star)
 
         return 0
 
@@ -150,6 +153,9 @@ class EnvAndPolicy:
         delta = 100
         n = 0
         while delta > precision*(1-discount)/discount:
+        #while n != 10:
+            delta = 100
+            #delta = 0
             n += 1
             print(n)
             for x in range(maze_max[0]):
@@ -159,7 +165,11 @@ class EnvAndPolicy:
                             state = [[x, y], [z, h]]
                             v_old = copy.deepcopy(v_star)
                             self.fill_value_and_policy(state)
-                            delta = np.sum(abs(v_star - v_old))
+                            #print(v_star-v_old)
+                            #delta = np.sum(np.abs(v_star - v_old))
+                            delta += LA.norm(v_star - v_old)
+            delta = delta-100
+            print(delta)
 
 def get_movement_given_action(action, state):
     pos = copy.deepcopy(state)
@@ -184,7 +194,7 @@ def main():
     state = [[0, 0], [4, 4]]
     for episode in tqdm(range(tot_episodes)):
         while state[0] != [4,4]:
-            index = new_run.get_index(state, step)
+            index = new_run.get_index(state)
             #print(index)
             action = a_star[index]
 
@@ -211,7 +221,7 @@ def main():
                 maze_map[tuple(state[1])] = 2
                 print(maze_map)
             # end while
-        distribution_array[step-1] += 1
+        distribution_array[step] += 1
     plt.grid()
     plt.plot(distribution_array)
     plt.show()
