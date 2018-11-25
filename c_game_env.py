@@ -24,8 +24,8 @@ horizon = 15
 tot_episodes = 100000
 precision = 1
 discount = 1 - 1 / 30
-mino_stand_still = False
-verbose = 1
+mino_stand_still = True
+verbose = 0
 
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
