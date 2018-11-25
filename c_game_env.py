@@ -21,6 +21,8 @@ maze_max = [5, 6]
 goal = [4, 4]
 horizon = 15
 tot_episodes = 100000
+precision = 1
+discount = 1 - 1 / 30
 mino_stand_still = False
 verbose = 0
 
@@ -117,18 +119,17 @@ class EnvAndPolicy:
     def prob_given_action(self, new_states):
         return 1 / len(new_states)
 
-    def get_index(self, state, step):
+    def get_index(self, state):
         index_state_time = copy.deepcopy(state)
-        index_state_time.append([step])
         index_state_time = [item for sublist in index_state_time for item in sublist]
         return tuple(index_state_time)
 
-    def fill_value_and_policy(self, state, step):
-        matrix_index = self.get_index(state, step)
+    def fill_value_and_policy(self, state):
+        matrix_index = self.get_index(state)
         value = np.array(np.ones(5) * -np.inf)
         possible_actions = self.get_actions(state)
 
-        if self.reward(state) != 0 or step == 14:
+        if self.reward(state) != 0:
             v_star[matrix_index] = self.reward(state)
         else:
             for action in possible_actions:
@@ -136,9 +137,9 @@ class EnvAndPolicy:
                 possible_states = self.get_states_given_action(state, action)
                 # print(possible_states)
                 for next_state in possible_states:
-                    next_state_index = self.get_index(next_state, step + 1)
+                    next_state_index = self.get_index(next_state)
                     # print(next_state_index)
-                    value[action] += self.prob_given_action(possible_states) * v_star[next_state_index]
+                    value[action] += discount * self.prob_given_action(possible_states) * v_star[next_state_index]
 
             v_star[matrix_index] = np.max(value)
             a_star[matrix_index] = np.argmax(value)
@@ -146,14 +147,19 @@ class EnvAndPolicy:
         return 0
 
     def main_loop(self, horizon=horizon):
-        for i in tqdm(range(horizon - 1, -1, -1)):
+        delta = 100
+        n = 0
+        while delta > precision*(1-discount)/discount:
+            n += 1
+            print(n)
             for x in range(maze_max[0]):
                 for y in range(maze_max[1]):
                     for z in range(maze_max[0]):
                         for h in range(maze_max[1]):
                             state = [[x, y], [z, h]]
-                            self.fill_value_and_policy(state, i)
-
+                            v_old = copy.deepcopy(v_star)
+                            self.fill_value_and_policy(state)
+                            delta = np.sum(abs(v_star - v_old))
 
 def get_movement_given_action(action, state):
     pos = copy.deepcopy(state)
