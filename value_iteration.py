@@ -26,6 +26,7 @@ precision = 1
 discount = 1 - (1 / 30)
 mino_stand_still = True
 verbose = 0
+end_plot = 50
 
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
@@ -183,12 +184,15 @@ def main():
     new_run = EnvAndPolicy()
     new_run.main_loop()
     print("Dynamic programming: done")
-    distribution_array = np.zeros(50)
+    distribution_array = np.zeros(end_plot)
+    death_array = np.zeros(end_plot)
+    win_array = np.zeros(end_plot)
+    draw_array = np.zeros(end_plot)
 
     for episode in tqdm(range(tot_episodes)):
         step = 0
         state = [[0, 0], [4, 4]]
-        while state[0] != [4, 4]:
+        while state[0] != [4, 4] and state[0] != state[1]:
             step += 1
             index = new_run.get_index(state)
             #print(index)
@@ -215,14 +219,26 @@ def main():
                 maze_map[tuple(state[1])] = 2
                 print(maze_map)
             # end while
-        try:
+        if step < end_plot:
             distribution_array[step] += 1
-        except:
-            pass
-    plt.grid()
-    plt.plot(distribution_array)
-    plt.show()
+            if state[0] == state[1]:
+                death_array[step] += 1
+            if state[0] == goal:
+                win_array[step] += 1
+            if state[0] == state[1]:
+                death_array[step] += 1
+                print("DEAD!")
+        else:
+            draw_array[end_plot-1] += 1
 
+    print("number of time out: ", np.sum(draw_array))
+    plt.grid()
+    plt.plot(distribution_array, label="distribution")
+    plt.plot(death_array, label="death")
+    plt.plot(win_array, label="win")
+    #plt.plot(draw_array, label="draw/end_plot")
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
     main()

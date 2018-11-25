@@ -128,7 +128,7 @@ class EnvAndPolicy:
         value = np.array(np.ones(5) * -np.inf)
         possible_actions = self.get_actions(state)
 
-        if self.reward(state) != 0 or step == 14:
+        if self.reward(state) != 0 or step == horizon-1:
             v_star[matrix_index] = self.reward(state)
         else:
             for action in possible_actions:
@@ -170,15 +170,18 @@ def get_movement_given_action(action, state):
 #maze_map = np.zeros(maze_max)
 def main():
     new_run = EnvAndPolicy()
-    new_run.main_loop(15)
+    new_run.main_loop(horizon)
     print("Dynamic programming: done")
     distribution_array = np.zeros(horizon+1)
+    death_array = np.zeros(horizon+1)
+    draw_array = np.zeros(horizon+1)
+    win_array = np.zeros(horizon+1)
 
     for episode in tqdm(range(tot_episodes)):
         step = 0
         state = [[0, 0], [4, 4]]
 
-        while state[0] != [4, 4] and step < 15:
+        while state[0] != [4, 4] and step < horizon and state[0] != state[1]:
 
             index = new_run.get_index(state, step)
             #print(index)
@@ -198,7 +201,7 @@ def main():
                     state[1] = nmp
                     break
 
-            step += 1 # keep after use
+            step += 1  # keep after use
             if verbose:
                 print(" _______________________", step)
                 maze_map = np.zeros(maze_max)
@@ -207,8 +210,20 @@ def main():
                 print(maze_map)
             # end while
         distribution_array[step] += 1
+        if state[0] == goal:
+            win_array[step] += 1
+        if state[0] == state[1]:
+            death_array[step] += 1
+            #print("dead")
+        if state[0] != goal and state[0] != state[1]:
+            draw_array[step] += 1
+
     plt.grid()
-    plt.plot(distribution_array)
+    plt.plot(distribution_array, label="distribution")
+    plt.plot(death_array, label="death")
+    plt.plot(win_array, label="win")
+    plt.plot(draw_array, label="draw")
+    plt.legend()
     plt.show()
 
 
