@@ -20,9 +20,13 @@ walls = [[[0, 1], [0, 2]],
 maze_max = [5, 6]
 goal = [4, 4]
 horizon = 15
+tot_episodes = 100000
+mino_stand_still = True
+verbose = 0
+
+# init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
 a_star = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
-
 
 class EnvAndPolicy:
     # init maze
@@ -96,6 +100,9 @@ class EnvAndPolicy:
         new_mino_pos = [mino_pos[0] - 1, mino_pos[1]]
         if new_mino_pos[0] >= 0:
             new_states.append([new_agent_pos, new_mino_pos])
+
+        if mino_stand_still:
+            new_states.append([new_agent_pos, mino_pos])
 
         return new_states
 
@@ -183,36 +190,44 @@ def get_movement_given_action(action, state):
 def main():
     new_run = EnvAndPolicy()
     new_run.main_loop(15)
-    print("done")
+    print("Dynamic programming: done")
+    distribution_array = np.zeros(horizon)
 
     step = 0
     state = [[0, 0], [4, 4]]
-    while state[0] != [4,4]:
-        index = new_run.get_index(state, step)
-        #print(index)
-        action = a_star[index]
+    for episode in tqdm(range(tot_episodes)):
+        while state[0] != [4,4]:
+            index = new_run.get_index(state, step)
+            #print(index)
+            action = a_star[index]
 
-        # player movement
-        state[0] = get_movement_given_action(action, state[0])
+            # player movement
+            state[0] = get_movement_given_action(action, state[0])
 
-        # mino movement
-        while True:
-            mino_action = randint(0, 3)
-            nmp = get_movement_given_action(mino_action, state[1])
-            #print(mino_action)
-            if 0 < nmp[0] < maze_max[0] and 0 < nmp[1] < maze_max[1]:
-                state[1] = nmp
-                break
+            # mino movement
+            while True:
+                mino_action = randint(0, 3)
+                if mino_stand_still:
+                    mino_action = randint(0, 4)
+                nmp = get_movement_given_action(mino_action, state[1])
+                #print(mino_action)
+                if 0 < nmp[0] < maze_max[0] and 0 < nmp[1] < maze_max[1]:
+                    state[1] = nmp
+                    break
 
-        step += 1
-        print(" _______________________", step)
-        maze_map = np.zeros(maze_max)
-        maze_map[tuple(state[0])] = 1
-        maze_map[tuple(state[1])] = 2
-        print(maze_map)
+            step += 1
 
-
-    #print(new_run.get_index(state, step))
+            if verbose:
+                print(" _______________________", step)
+                maze_map = np.zeros(maze_max)
+                maze_map[tuple(state[0])] = 1
+                maze_map[tuple(state[1])] = 2
+                print(maze_map)
+            # end while
+        distribution_array[step-1] += 1
+    plt.grid()
+    plt.plot(distribution_array)
+    plt.show()
 
 
 if __name__ == "__main__":
