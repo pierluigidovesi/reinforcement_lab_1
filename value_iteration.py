@@ -21,11 +21,11 @@ walls = [[[0, 1], [0, 2]],
 maze_max = [5, 6]
 goal = [4, 4]
 horizon = 15
-tot_episodes = 100000
+tot_episodes = 10000
 precision = 1
 discount = 1 - (1 / 30)
-mino_stand_still = False
-verbose = 1
+mino_stand_still = True
+verbose = 0
 
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
@@ -149,15 +149,13 @@ class EnvAndPolicy:
 
         return 0
 
-    def main_loop(self, horizon=horizon):
+    def main_loop(self):
         delta = 100
         n = 0
         while delta > precision*(1-discount)/discount:
-        #while n != 10:
-            delta = 100
-            #delta = 0
+            delta = 0
             n += 1
-            print(n)
+            # print(n)
             for x in range(maze_max[0]):
                 for y in range(maze_max[1]):
                     for z in range(maze_max[0]):
@@ -165,11 +163,8 @@ class EnvAndPolicy:
                             state = [[x, y], [z, h]]
                             v_old = copy.deepcopy(v_star)
                             self.fill_value_and_policy(state)
-                            #print(v_star-v_old)
-                            #delta = np.sum(np.abs(v_star - v_old))
                             delta += LA.norm(v_star - v_old)
-            delta = delta-100
-            print(delta)
+            # print(delta)
 
 def get_movement_given_action(action, state):
     pos = copy.deepcopy(state)
@@ -186,14 +181,15 @@ def get_movement_given_action(action, state):
 #maze_map = np.zeros(maze_max)
 def main():
     new_run = EnvAndPolicy()
-    new_run.main_loop(15)
+    new_run.main_loop()
     print("Dynamic programming: done")
-    distribution_array = np.zeros(horizon)
+    distribution_array = np.zeros(50)
 
-    step = 0
-    state = [[0, 0], [4, 4]]
     for episode in tqdm(range(tot_episodes)):
-        while state[0] != [4,4]:
+        step = 0
+        state = [[0, 0], [4, 4]]
+        while state[0] != [4, 4]:
+            step += 1
             index = new_run.get_index(state)
             #print(index)
             action = a_star[index]
@@ -212,8 +208,6 @@ def main():
                     state[1] = nmp
                     break
 
-            step += 1
-
             if verbose:
                 print(" _______________________", step)
                 maze_map = np.zeros(maze_max)
@@ -221,7 +215,10 @@ def main():
                 maze_map[tuple(state[1])] = 2
                 print(maze_map)
             # end while
-        distribution_array[step] += 1
+        try:
+            distribution_array[step] += 1
+        except:
+            pass
     plt.grid()
     plt.plot(distribution_array)
     plt.show()

@@ -20,9 +20,9 @@ walls = [[[0, 1], [0, 2]],
 maze_max = [5, 6]
 goal = [4, 4]
 horizon = 15
-tot_episodes = 100000
-mino_stand_still = False
-verbose = 1
+tot_episodes = 10000
+mino_stand_still = True
+verbose = 0
 
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
@@ -172,12 +172,14 @@ def main():
     new_run = EnvAndPolicy()
     new_run.main_loop(15)
     print("Dynamic programming: done")
-    distribution_array = np.zeros(horizon)
+    distribution_array = np.zeros(horizon+1)
 
-    step = 0
-    state = [[0, 0], [4, 4]]
     for episode in tqdm(range(tot_episodes)):
-        while state[0] != [4,4]:
+        step = 0
+        state = [[0, 0], [4, 4]]
+
+        while state[0] != [4, 4] and step < 15:
+
             index = new_run.get_index(state, step)
             #print(index)
             action = a_star[index]
@@ -196,8 +198,7 @@ def main():
                     state[1] = nmp
                     break
 
-            step += 1
-
+            step += 1 # keep after use
             if verbose:
                 print(" _______________________", step)
                 maze_map = np.zeros(maze_max)
