@@ -1,7 +1,8 @@
 import numpy as np
+import time
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 import copy
+from tqdm import tqdm
 from random import randint
 
 walls = [[[0, 1], [0, 2]],
@@ -27,6 +28,7 @@ verbose = 0
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
 a_star = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
+
 
 class EnvAndPolicy:
     # init maze
@@ -170,8 +172,10 @@ def get_movement_given_action(action, state):
 #maze_map = np.zeros(maze_max)
 def main():
     new_run = EnvAndPolicy()
+    t_start = time.time()
     new_run.main_loop(horizon)
-    print("Dynamic programming: done")
+    t_elapsed = time.time() - t_start
+    print("Dynamic programming time: ", t_elapsed)
     distribution_array = np.zeros(horizon+1)
     death_array = np.zeros(horizon+1)
     draw_array = np.zeros(horizon+1)
@@ -214,7 +218,7 @@ def main():
             win_array[step] += 1
         if state[0] == state[1]:
             death_array[step] += 1
-            #print("dead")
+            # print("dead")
         if state[0] != goal and state[0] != state[1]:
             draw_array[step] += 1
 

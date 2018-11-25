@@ -1,9 +1,10 @@
 import numpy as np
-from numpy import linalg as LA
+import time
+import copy
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import copy
 from random import randint
+from numpy import linalg as LA
 
 walls = [[[0, 1], [0, 2]],
          [[1, 1], [1, 2]],
@@ -20,7 +21,6 @@ walls = [[[0, 1], [0, 2]],
 
 maze_max = [5, 6]
 goal = [4, 4]
-horizon = 15
 tot_episodes = 10000
 precision = 1
 
@@ -40,7 +40,6 @@ class EnvAndPolicy:
         self.walls = walls
         self.maze_max = maze_max
         self.goal = goal
-        self.horizon = horizon
         self.v_star = v_star
         self.a_star = a_star
 
@@ -168,6 +167,7 @@ class EnvAndPolicy:
                             self.fill_value_and_policy(state)
                             delta += LA.norm(v_star - v_old)
             # print(delta)
+        print("number of value iterations: ", n, " final delta: ", delta, " < ", precision*(1-discount)/discount)
 
 def get_movement_given_action(action, state):
     pos = copy.deepcopy(state)
@@ -183,9 +183,12 @@ def get_movement_given_action(action, state):
 
 #maze_map = np.zeros(maze_max)
 def main():
+
     new_run = EnvAndPolicy()
+    t_start = time.time()
     new_run.main_loop()
-    print("Dynamic programming: done")
+    t_elapsed = time.time() - t_start
+    print("Dynamic programming time: ", t_elapsed)
     distribution_array = np.zeros(end_plot)
     death_array = np.zeros(end_plot)
     win_array = np.zeros(end_plot)
@@ -220,7 +223,7 @@ def main():
                 maze_map[tuple(state[0])] = 1
                 maze_map[tuple(state[1])] = 2
                 print(maze_map)
-            # end while
+            # end while episode
         if step < end_plot:
             distribution_array[step] += 1
             if state[0] == state[1]:
@@ -232,13 +235,13 @@ def main():
                 print("DEAD!")
         else:
             draw_array[end_plot-1] += 1
+    # end for 10000 episodes
 
     print("number of time out: ", np.sum(draw_array))
     plt.grid()
     plt.plot(distribution_array, label="distribution")
     plt.plot(death_array, label="death")
     plt.plot(win_array, label="win")
-    #plt.plot(draw_array, label="draw/end_plot")
     plt.legend()
     plt.show()
 
