@@ -23,7 +23,9 @@ goal = [4, 4]
 horizon = 15
 tot_episodes = 10000
 precision = 1
+
 discount = 1 - (1 / 30)
+
 mino_stand_still = True
 verbose = 0
 end_plot = 50
