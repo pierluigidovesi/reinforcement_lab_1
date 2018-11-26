@@ -26,7 +26,7 @@ precision = 1
 
 discount = 1 - (1 / 30)
 
-mino_stand_still = True
+mino_stand_still = False
 verbose = 0
 end_plot = 50
 
@@ -192,7 +192,7 @@ def main():
     distribution_array = np.zeros(end_plot)
     death_array = np.zeros(end_plot)
     win_array = np.zeros(end_plot)
-    draw_array = np.zeros(end_plot)
+    time_out = 0
 
     for episode in tqdm(range(tot_episodes)):
         step = 0
@@ -234,14 +234,14 @@ def main():
                 death_array[step] += 1
                 print("DEAD!")
         else:
-            draw_array[end_plot-1] += 1
+            time_out += 1
     # end for 10000 episodes
 
-    print("number of time out: ", np.sum(draw_array))
+    print("number of time out: ", time_out/tot_episodes)
     plt.grid()
-    plt.plot(distribution_array, label="distribution")
-    plt.plot(death_array, label="death")
-    plt.plot(win_array, label="win")
+    plt.plot(distribution_array/tot_episodes, label="distribution")
+    plt.plot(death_array/tot_episodes, label="death")
+    plt.plot(win_array/tot_episodes, label="win")
     plt.legend()
     plt.show()
 
