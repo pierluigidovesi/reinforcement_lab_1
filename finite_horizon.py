@@ -178,7 +178,7 @@ def main():
     print("Dynamic programming time: ", t_elapsed)
     distribution_array = np.zeros(horizon+1)
     death_array = np.zeros(horizon+1)
-    draw_array = np.zeros(horizon+1)
+    draw = 0
     win_array = np.zeros(horizon+1)
 
     for episode in tqdm(range(tot_episodes)):
@@ -220,13 +220,13 @@ def main():
             death_array[step] += 1
             # print("dead")
         if state[0] != goal and state[0] != state[1]:
-            draw_array[step] += 1
+            draw += 1
 
     plt.grid()
-    plt.plot(distribution_array, label="distribution")
-    plt.plot(death_array, label="death")
-    plt.plot(win_array, label="win")
-    plt.plot(draw_array, label="draw")
+    plt.plot(distribution_array/tot_episodes, label="distribution")
+    plt.plot(death_array/tot_episodes, label="death")
+    plt.plot(win_array/tot_episodes, label="win")
+    print("draw: ", draw/tot_episodes)
     plt.legend()
     plt.show()
 

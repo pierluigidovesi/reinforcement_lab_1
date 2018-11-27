@@ -6,42 +6,31 @@ from tqdm import tqdm
 from random import randint
 from numpy import linalg as LA
 
-walls = [[[0, 1], [0, 2]],
-         [[1, 1], [1, 2]],
-         [[2, 1], [2, 2]],
-         [[1, 3], [1, 4]],
-         [[2, 3], [2, 4]],
-         [[1, 4], [2, 4]],
-         [[1, 5], [2, 5]],
-         [[3, 1], [4, 1]],
-         [[3, 2], [4, 2]],
-         [[3, 3], [4, 3]],
-         [[3, 4], [4, 4]],
-         [[4, 3], [4, 4]]]
-
-maze_max = [5, 6]
-goal = [4, 4]
+maze_max = [4, 4]
+goal = [1, 1] #bank
 tot_episodes = 10000
-precision = 1
 
-discount = 1 - (1 / 30)
+discount = 0.8
 
-mino_stand_still = False
+# police is police
+police_stand_still = False
 verbose = 0
 end_plot = 50
+num_action = 5
 
 # init values
-v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
-a_star = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
+q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
+n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
+
 
 class EnvAndPolicy:
     # init maze
     def __init__(self):
-        self.walls = walls
         self.maze_max = maze_max
         self.goal = goal
-        self.v_star = v_star
-        self.a_star = a_star
+        self.q_table = q_table
+        self.n_table = n_table
+
 
     # possible_actions
     def get_actions(self, state):
@@ -57,16 +46,16 @@ class EnvAndPolicy:
         move_east = [agent_pos, [agent_pos[0], agent_pos[1] + 1]]
         move_west = [agent_pos, [agent_pos[0], agent_pos[1] - 1]]
 
-        if agent_pos[0] > 0 and not (move_north in walls) and not (move_north[::-1] in walls):
+        if agent_pos[0] > 0:
             actions_list.append(0)
             # print("north")
-        if agent_pos[0] < maze_max[0] - 1 and not (move_south in walls) and not (move_south[::-1] in walls):
+        if agent_pos[0] < maze_max[0] - 1:
             actions_list.append(2)
             # print("south")
-        if agent_pos[1] > 0 and not (move_west in walls) and not (move_west[::-1] in walls):
+        if agent_pos[1] > 0:
             actions_list.append(3)
             # print("west")
-        if agent_pos[1] < maze_max[1] - 1 and not (move_east in walls) and not (move_east[::-1] in walls):
+        if agent_pos[1] < maze_max[1] - 1:
             actions_list.append(1)
             # print("east")
         actions_list.append(4)
@@ -75,7 +64,7 @@ class EnvAndPolicy:
 
     def get_states_given_action(self, state, action):
         agent_pos = state[0]
-        mino_pos = state[1]
+        police_pos = state[1]
 
         new_states = []
 
@@ -90,30 +79,30 @@ class EnvAndPolicy:
         elif action == 4:
             new_agent_pos = agent_pos
 
-        new_mino_pos = [mino_pos[0], mino_pos[1] + 1]
-        if new_mino_pos[1] < maze_max[1]:
-            new_states.append([new_agent_pos, new_mino_pos])
+        new_police_pos = [police_pos[0], police_pos[1] + 1]
+        if new_police_pos[1] < maze_max[1]:
+            new_states.append([new_agent_pos, new_police_pos])
 
-        new_mino_pos = [mino_pos[0], mino_pos[1] - 1]
-        if new_mino_pos[1] >= 0:
-            new_states.append([new_agent_pos, new_mino_pos])
+        new_police_pos = [police_pos[0], police_pos[1] - 1]
+        if new_police_pos[1] >= 0:
+            new_states.append([new_agent_pos, new_police_pos])
 
-        new_mino_pos = [mino_pos[0] + 1, mino_pos[1]]
-        if new_mino_pos[0] < maze_max[0]:
-            new_states.append([new_agent_pos, new_mino_pos])
+        new_police_pos = [police_pos[0] + 1, police_pos[1]]
+        if new_police_pos[0] < maze_max[0]:
+            new_states.append([new_agent_pos, new_police_pos])
 
-        new_mino_pos = [mino_pos[0] - 1, mino_pos[1]]
-        if new_mino_pos[0] >= 0:
-            new_states.append([new_agent_pos, new_mino_pos])
+        new_police_pos = [police_pos[0] - 1, police_pos[1]]
+        if new_police_pos[0] >= 0:
+            new_states.append([new_agent_pos, new_police_pos])
 
-        if mino_stand_still:
-            new_states.append([new_agent_pos, mino_pos])
+        if police_stand_still:
+            new_states.append([new_agent_pos, police_pos])
 
         return new_states
 
     def reward(self, state):
         if state[0] == state[1]:
-            return -1
+            return -10
         elif state[0] == goal:
             return 1
         else:
@@ -127,22 +116,24 @@ class EnvAndPolicy:
         index_state_time = [item for sublist in index_state_time for item in sublist]
         return tuple(index_state_time)
 
-    def fill_value_and_policy(self, state):
+    def fill_dataset(selfself):
+
+
+    def fill_q_table(self, state):
         matrix_index = self.get_index(state)
-        value = np.array(np.ones(5) * -np.inf)
         possible_actions = self.get_actions(state)
 
-        if self.reward(state) != 0:
-            v_star[matrix_index] = self.reward(state)
-        else:
-            for action in possible_actions:
-                value[action] = self.reward(state)
-                possible_states = self.get_states_given_action(state, action)
-                # print(possible_states)
-                for next_state in possible_states:
-                    next_state_index = self.get_index(next_state)
-                    # print(next_state_index)
-                    value[action] += discount * self.prob_given_action(possible_states) * v_star[next_state_index]
+
+        for action in possible_actions:
+            reward = self.reward(state)
+            possible_states = self.get_states_given_action(state, action)
+            # print(possible_states)
+            #for next_state in possible_states:
+
+
+                next_state_index = self.get_index(next_state)
+                # print(next_state_index)
+                value[action] += discount * self.prob_given_action(possible_states) * v_star[next_state_index]
 
             v_star[matrix_index] = np.max(value)
             a_star[matrix_index] = np.argmax(value)
@@ -192,7 +183,7 @@ def main():
     distribution_array = np.zeros(end_plot)
     death_array = np.zeros(end_plot)
     win_array = np.zeros(end_plot)
-    time_out = 0
+    draw_array = np.zeros(end_plot)
 
     for episode in tqdm(range(tot_episodes)):
         step = 0
@@ -206,13 +197,13 @@ def main():
             # player movement
             state[0] = get_movement_given_action(action, state[0])
 
-            # mino movement
+            # police movement
             while True:
-                mino_action = randint(0, 3)
-                if mino_stand_still:
-                    mino_action = randint(0, 4)
-                nmp = get_movement_given_action(mino_action, state[1])
-                #print(mino_action)
+                police_action = randint(0, 3)
+                if police_stand_still:
+                    police_action = randint(0, 4)
+                nmp = get_movement_given_action(police_action, state[1])
+                #print(police_action)
                 if 0 < nmp[0] < maze_max[0] and 0 < nmp[1] < maze_max[1]:
                     state[1] = nmp
                     break
@@ -234,14 +225,14 @@ def main():
                 death_array[step] += 1
                 print("DEAD!")
         else:
-            time_out += 1
+            draw_array[end_plot-1] += 1
     # end for 10000 episodes
 
-    print("number of time out: ", time_out/tot_episodes)
+    print("number of time out: ", np.sum(draw_array))
     plt.grid()
-    plt.plot(distribution_array/tot_episodes, label="distribution")
-    plt.plot(death_array/tot_episodes, label="death")
-    plt.plot(win_array/tot_episodes, label="win")
+    plt.plot(distribution_array, label="distribution")
+    plt.plot(death_array, label="death")
+    plt.plot(win_array, label="win")
     plt.legend()
     plt.show()
 
