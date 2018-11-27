@@ -22,7 +22,7 @@ maze_max = [5, 6]
 goal = [4, 4]
 horizon = 15
 tot_episodes = 10000
-mino_stand_still = True
+mino_stand_still = False
 verbose = 0
 
 # init values
