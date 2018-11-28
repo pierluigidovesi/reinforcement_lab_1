@@ -19,17 +19,16 @@ police_stand_still = False
 verbose = 0
 end_plot = 50
 num_action = 5
-number_steps = 10_000_000
+number_steps = 10_000
 playing_iter = 1000
 
 # init values
 initial_state = [[0, 0],[3,3]]
 q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
 n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
-a_table = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1]),int)
+a_table = 100 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1]),int)
 sars_dataset = []
 
-verbose = 1
 
 class EnvAndPolicy:
     # init maze
@@ -44,8 +43,8 @@ class EnvAndPolicy:
     def get_actions(self, state):
         agent_pos = state[0]
 
-        assert agent_pos[0] < maze_max[0] or agent_pos[1] < maze_max[1]
-        assert agent_pos[0] >= 0 or agent_pos[1] >= 0
+        #assert agent_pos[0] < maze_max[0] and agent_pos[1] < maze_max[1]
+        #assert agent_pos[0] >= 0 and agent_pos[1] >= 0
 
         actions_list = []
 
@@ -73,6 +72,9 @@ class EnvAndPolicy:
     def get_states_given_action(self, state, action):
         agent_pos = state[0]
         police_pos = state[1]
+
+        #assert agent_pos[0] < maze_max[0] and agent_pos[1] < maze_max[1]
+        #assert agent_pos[0] >= 0 and agent_pos[1] >= 0
 
         new_states = []
 
@@ -116,12 +118,11 @@ class EnvAndPolicy:
         else:
             return 0
 
-    def prob_given_action(self, new_states):
-        return 1 / len(new_states)
-
     def get_index(self, state, action=10):
 
         index_state_time = copy.deepcopy(state)
+
+        assert action != 100
 
         if action != 10:
             index_state_time.append([action])
@@ -132,40 +133,32 @@ class EnvAndPolicy:
 
     def sarsa(self, epsilon):
 
+        # init
         next_state = initial_state
         possible_actions = self.get_actions(next_state)
         next_action = random.choice(possible_actions)
 
-        for step in range(number_steps):
+        for _ in tqdm(range(number_steps)):
 
             state = copy.deepcopy(next_state)
             action = copy.deepcopy(next_action)
 
-            print(action)
-
             reward = self.reward(state)
 
             next_possible_states = self.get_states_given_action(state, action)
-            print(next_possible_states)
             next_state = random.choice(next_possible_states)
 
             #epsilon greedy
-            random_num = random.uniform(0, 1)
-            if random_num < epsilon:
+            next_a_index = self.get_index(next_state)
+            next_action = a_table[next_a_index]
+            if random.uniform(0, 1) < epsilon or next_action == 100:
                 possible_actions = self.get_actions(next_state)
                 next_action = random.choice(possible_actions)
-            else:
-                next_a_index = self.get_index(next_state)
-                next_action = a_table[next_a_index]
-                if next_action == 10:
-                    possible_actions = self.get_actions(next_state)
-                    next_action = random.choice(possible_actions)
 
-            print(next_action)
             epsilon -= epsilon/number_steps
-            matrix_index = self.get_index(state, action)
 
-            n_table[matrix_index] += 1
+            matrix_index = self.get_index(state, action)
+            n_table[matrix_index] += 1  # N TABLE
             alpha = (1/n_table[matrix_index])**(2/3)
 
             next_matrix_index = self.get_index(next_state, next_action)
@@ -175,7 +168,15 @@ class EnvAndPolicy:
             q_table[matrix_index] += alpha*(reward + discount*(q_next-q_now))
 
             a_index = self.get_index(state)
-            a_table[a_index] = np.argmax(q_table[a_index])
+            #a_table[a_index] = np.argmax(q_table[a_index])
+
+
+            best_action = np.argmax(q_table[a_index])
+            possible_best_actions = self.get_actions(state)
+            if best_action in possible_best_actions:
+                a_table[a_index] = best_action
+            else:
+                a_table[a_index] = random.choice(possible_best_actions)
 
         return 0
 

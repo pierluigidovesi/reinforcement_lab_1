@@ -17,7 +17,7 @@ discount = 0.8
 police_stand_still = False
 end_plot = 50
 num_action = 5
-dim_dataset = 1000000
+dim_dataset = 100000
 playing_iter = 100000
 verbose = 0
 
@@ -164,7 +164,13 @@ class EnvAndPolicy:
             max_difference = np.max(q_next - q_table[matrix_index])
 
             q_table[matrix_index] += alpha*(reward + discount*max_difference)
-            a_table[a_index] = np.argmax(q_table[a_index])
+
+            best_action = np.argmax(q_table[a_index])
+            possible_best_actions = self.get_actions(state)
+            if best_action in possible_best_actions:
+                a_table[a_index] = best_action
+            else:
+                a_table[a_index] = random.choice(possible_best_actions)
 
         return 0
 
