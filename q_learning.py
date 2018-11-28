@@ -18,10 +18,13 @@ police_stand_still = False
 verbose = 0
 end_plot = 50
 num_action = 5
+dim_dataset = 10_000
+playing_iter = 1000
 
 # init values
 q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
 n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
+a_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
 sars_dataset = []
 
 class EnvAndPolicy:
@@ -39,8 +42,6 @@ class EnvAndPolicy:
         assert agent_pos[0] < maze_max[0] and agent_pos[1] < maze_max[1]
 
         actions_list = []
-        if self.reward(state) != 0:
-            return actions_list
 
         move_north = [agent_pos, [agent_pos[0] - 1, agent_pos[1]]]
         move_south = [agent_pos, [agent_pos[0] + 1, agent_pos[1]]]
@@ -123,7 +124,7 @@ class EnvAndPolicy:
 
         return tuple(index_state_time)
 
-    def fill_dataset(self, state, exploration_steps):
+    def fill_dataset(self, state, exploration_steps=1):
 
         for _ in tqdm(range(exploration_steps)):
 
@@ -131,51 +132,42 @@ class EnvAndPolicy:
             random_action = random.choice(possible_actions)
             possible_states = self.get_states_given_action(state, random_action)
             random_state = random.choice(possible_states)
-            reward_random_state = self.reward(random_state)
+            reward_state = self.reward(state)
 
-            sars_dataset.append([state, random_action, reward_random_state, random_state])
+            sars_dataset.append([state, random_action, reward_state, random_state])
 
             state = copy.deepcopy(random_state)
 
-        return 0
+        return [state, random_action, reward_state, random_state]
 
     def fill_q_table(self):
 
         for step in sars_dataset:
+
             state = step[0]
             action = step[1]
             reward = step[2]
             next_state = step[3]
 
             matrix_index = self.get_index(state, action)
+            a_index = self.get_index(state)
             n_table[matrix_index] += 1
             alpha = (1/n_table[matrix_index])**(2/3)
 
             next_possible_actions = self.get_actions(next_state)
             next_indices = [self.get_index(next_state, next_action) for next_action in next_possible_actions]
-            max_difference = np.max(q_table[next_indices] - q_table[matrix_index])
+            print(matrix_index)
+            print(next_indices)
+            # ERRORE QUI!!!!
+            print(q_table[np.asarray(tuple(next_indices))])
+            print(q_table[matrix_index])
+            max_difference = np.max(q_table[tuple(next_indices)] - q_table[matrix_index])
 
             q_table[matrix_index] += alpha*(reward + discount*max_difference)
+            a_table[a_index] = np.argmax(q_table[a_index])
 
         return 0
 
-    def main_loop(self):
-        delta = 100
-        n = 0
-        while delta > precision*(1-discount)/discount:
-            delta = 0
-            n += 1
-            # print(n)
-            for x in range(maze_max[0]):
-                for y in range(maze_max[1]):
-                    for z in range(maze_max[0]):
-                        for h in range(maze_max[1]):
-                            state = [[x, y], [z, h]]
-                            v_old = copy.deepcopy(v_star)
-                            self.fill_value_and_policy(state)
-                            delta += LA.norm(v_star - v_old)
-            # print(delta)
-        print("number of value iterations: ", n, " final delta: ", delta, " < ", precision*(1-discount)/discount)
 
 def get_movement_given_action(action, state):
     pos = copy.deepcopy(state)
@@ -189,67 +181,64 @@ def get_movement_given_action(action, state):
         pos[1] -= 1
     return pos
 
-#maze_map = np.zeros(maze_max)
+
+# maze_map = np.zeros(maze_max)
 def main():
-
+    state = [[0, 0], [3, 3]]
     new_run = EnvAndPolicy()
+
+    # dataset creation
     t_start = time.time()
-    new_run.main_loop()
+    new_run.fill_dataset(state, dim_dataset)
     t_elapsed = time.time() - t_start
-    print("Dynamic programming time: ", t_elapsed)
-    distribution_array = np.zeros(end_plot)
-    death_array = np.zeros(end_plot)
-    win_array = np.zeros(end_plot)
-    draw_array = np.zeros(end_plot)
+    print("Dataset creation time: ", t_elapsed)
 
-    for episode in tqdm(range(tot_episodes)):
-        step = 0
-        state = [[0, 0], [4, 4]]
-        while state[0] != [4, 4] and state[0] != state[1]:
-            step += 1
-            index = new_run.get_index(state)
-            #print(index)
-            action = a_star[index]
+    # offline off-policy training
+    t_start = time.time()
+    new_run.fill_q_table()
+    t_elapsed = time.time() - t_start
+    print("Offline training time: ", t_elapsed)
 
-            # player movement
-            state[0] = get_movement_given_action(action, state[0])
+    # plotting stuff
+    total_reward = 0
+    reward_list = []
+    deriv_reward_list = []
 
-            # police movement
-            while True:
-                police_action = randint(0, 3)
-                if police_stand_still:
-                    police_action = randint(0, 4)
-                nmp = get_movement_given_action(police_action, state[1])
-                #print(police_action)
-                if 0 < nmp[0] < maze_max[0] and 0 < nmp[1] < maze_max[1]:
-                    state[1] = nmp
-                    break
+    for step in range(playing_iter):
+        index = new_run.get_index(state)
+        #print(index)
+        action = a_table[index]
+
+        # player movement
+        state[0] = get_movement_given_action(action, state[0])
+
+        # police movement
+        while True:
+            police_action = randint(0, 3)
+            if police_stand_still:
+                police_action = randint(0, 4)
+            nmp = get_movement_given_action(police_action, state[1])
+            #print(police_action)
+            if 0 < nmp[0] < maze_max[0] and 0 < nmp[1] < maze_max[1]:
+                state[1] = nmp
+                break
+
+            # reward check
+            total_reward += new_run.reward(state)
+            reward_list.append(total_reward)
+            deriv_reward_list.append(new_run.reward(state))
 
             if verbose:
-                print(" _______________________", step)
+                print(" _______________________", step, " money: ", total_reward)
                 maze_map = np.zeros(maze_max)
                 maze_map[tuple(state[0])] = 1
                 maze_map[tuple(state[1])] = 2
                 print(maze_map)
             # end while episode
-        if step < end_plot:
-            distribution_array[step] += 1
-            if state[0] == state[1]:
-                death_array[step] += 1
-            if state[0] == goal:
-                win_array[step] += 1
-            if state[0] == state[1]:
-                death_array[step] += 1
-                print("DEAD!")
-        else:
-            draw_array[end_plot-1] += 1
-    # end for 10000 episodes
 
-    print("number of time out: ", np.sum(draw_array))
     plt.grid()
-    plt.plot(distribution_array, label="distribution")
-    plt.plot(death_array, label="death")
-    plt.plot(win_array, label="win")
+    plt.plot(reward_list, label="total_reward")
+    plt.plot(deriv_reward_list, label="step reward")
     plt.legend()
     plt.show()
 
