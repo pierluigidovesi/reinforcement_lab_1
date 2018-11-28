@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import copy
+import random
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from random import randint
@@ -21,7 +22,7 @@ num_action = 5
 # init values
 q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
 n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
-
+sars_dataset = []
 
 class EnvAndPolicy:
     # init maze
@@ -111,34 +112,50 @@ class EnvAndPolicy:
     def prob_given_action(self, new_states):
         return 1 / len(new_states)
 
-    def get_index(self, state):
+    def get_index(self, state, action=10):
+
         index_state_time = copy.deepcopy(state)
+
+        if action != 10:
+            index_state_time.append([action])
+
         index_state_time = [item for sublist in index_state_time for item in sublist]
+
         return tuple(index_state_time)
 
-    def fill_dataset(selfself):
+    def fill_dataset(self, state, exploration_steps):
 
+        for _ in tqdm(range(exploration_steps)):
 
-    def fill_q_table(self, state):
-        matrix_index = self.get_index(state)
-        possible_actions = self.get_actions(state)
+            possible_actions = self.get_actions(state)
+            random_action = random.choice(possible_actions)
+            possible_states = self.get_states_given_action(state, random_action)
+            random_state = random.choice(possible_states)
+            reward_random_state = self.reward(random_state)
 
+            sars_dataset.append([state, random_action, reward_random_state, random_state])
 
-        for action in possible_actions:
-            reward = self.reward(state)
-            possible_states = self.get_states_given_action(state, action)
-            # print(possible_states)
-            #for next_state in possible_states:
+            state = copy.deepcopy(random_state)
 
+        return 0
 
-                next_state_index = self.get_index(next_state)
-                # print(next_state_index)
-                value[action] += discount * self.prob_given_action(possible_states) * v_star[next_state_index]
+    def fill_q_table(self):
 
-            v_star[matrix_index] = np.max(value)
-            a_star[matrix_index] = np.argmax(value)
-            #print(v_star)
-            #print(a_star)
+        for step in sars_dataset:
+            state = step[0]
+            action = step[1]
+            reward = step[2]
+            next_state = step[3]
+
+            matrix_index = self.get_index(state, action)
+            n_table[matrix_index] += 1
+            alpha = (1/n_table[matrix_index])**(2/3)
+
+            next_possible_actions = self.get_actions(next_state)
+            next_indices = [self.get_index(next_state, next_action) for next_action in next_possible_actions]
+            max_difference = np.max(q_table[next_indices] - q_table[matrix_index])
+
+            q_table[matrix_index] += alpha*(reward + discount*max_difference)
 
         return 0
 
