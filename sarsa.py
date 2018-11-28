@@ -12,21 +12,24 @@ goal = [1, 1] #bank
 tot_episodes = 10000
 
 discount = 0.8
+epsilon = 0.1
 
 # police is police
 police_stand_still = False
+verbose = 0
 end_plot = 50
 num_action = 5
-dim_dataset = 1000000
-playing_iter = 100000
-verbose = 0
+number_steps = 10_000_000
+playing_iter = 1000
 
 # init values
+initial_state = [[0, 0],[3,3]]
 q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
 n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
-a_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
+a_table = 10 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1]),int)
 sars_dataset = []
 
+verbose = 1
 
 class EnvAndPolicy:
     # init maze
@@ -40,7 +43,9 @@ class EnvAndPolicy:
     # possible_actions
     def get_actions(self, state):
         agent_pos = state[0]
-        assert agent_pos[0] < maze_max[0] and agent_pos[1] < maze_max[1]
+
+        assert agent_pos[0] < maze_max[0] or agent_pos[1] < maze_max[1]
+        assert agent_pos[0] >= 0 or agent_pos[1] >= 0
 
         actions_list = []
 
@@ -125,45 +130,51 @@ class EnvAndPolicy:
 
         return tuple(index_state_time)
 
-    def fill_dataset(self, state, exploration_steps=1):
+    def sarsa(self, epsilon):
 
-        for _ in tqdm(range(exploration_steps)):
+        next_state = initial_state
+        possible_actions = self.get_actions(next_state)
+        next_action = random.choice(possible_actions)
 
-            possible_actions = self.get_actions(state)
-            random_action = random.choice(possible_actions)
-            possible_states = self.get_states_given_action(state, random_action)
-            random_state = random.choice(possible_states)
-            reward_state = self.reward(state)
+        for step in range(number_steps):
 
-            sars_dataset.append([state, random_action, reward_state, random_state])
+            state = copy.deepcopy(next_state)
+            action = copy.deepcopy(next_action)
 
-            state = copy.deepcopy(random_state)
+            print(action)
 
-        return [state, random_action, reward_state, random_state]
+            reward = self.reward(state)
 
-    def fill_q_table(self):
+            next_possible_states = self.get_states_given_action(state, action)
+            print(next_possible_states)
+            next_state = random.choice(next_possible_states)
 
-        for step in tqdm(sars_dataset):
+            #epsilon greedy
+            random_num = random.uniform(0, 1)
+            if random_num < epsilon:
+                possible_actions = self.get_actions(next_state)
+                next_action = random.choice(possible_actions)
+            else:
+                next_a_index = self.get_index(next_state)
+                next_action = a_table[next_a_index]
+                if next_action == 10:
+                    possible_actions = self.get_actions(next_state)
+                    next_action = random.choice(possible_actions)
 
-            state = step[0]
-            action = step[1]
-            reward = step[2]
-            next_state = step[3]
-
+            print(next_action)
+            epsilon -= epsilon/number_steps
             matrix_index = self.get_index(state, action)
-            a_index = self.get_index(state)
+
             n_table[matrix_index] += 1
             alpha = (1/n_table[matrix_index])**(2/3)
 
-            next_possible_actions = self.get_actions(next_state)
-            q_next = np.array(np.ones(5) * -np.inf)
-            for i in range(4):
-                for next_action in next_possible_actions:
-                    q_next[next_action]=q_table[self.get_index(next_state, next_action)]
+            next_matrix_index = self.get_index(next_state, next_action)
+            q_next = q_table[next_matrix_index]
+            q_now = q_table[matrix_index]
 
-            max_difference = np.max(q_next - q_table[matrix_index])
+            q_table[matrix_index] += alpha*(reward + discount*(q_next-q_now))
 
-            q_table[matrix_index] += alpha*(reward + discount*max_difference)
+            a_index = self.get_index(state)
             a_table[a_index] = np.argmax(q_table[a_index])
 
         return 0
@@ -187,25 +198,18 @@ def main():
     state = [[0, 0], [3, 3]]
     new_run = EnvAndPolicy()
 
-    # dataset creation
+    # offline on-policy training
     t_start = time.time()
-    new_run.fill_dataset(state, dim_dataset)
+    new_run.sarsa(epsilon)
     t_elapsed = time.time() - t_start
-    #print("Dataset creation time: ", t_elapsed)
-
-    # offline off-policy training
-    t_start = time.time()
-    new_run.fill_q_table()
-    t_elapsed = time.time() - t_start
-    #print("Offline training time: ", t_elapsed)
+    print("Offline training time: ", t_elapsed)
 
     # plotting stuff
     total_reward = 0
     reward_list = []
     deriv_reward_list = []
 
-
-    for step in tqdm(range(playing_iter)):
+    for step in range(playing_iter):
         index = new_run.get_index(state)
         #print(index)
         action = a_table[index]
@@ -228,8 +232,6 @@ def main():
         total_reward += new_run.reward(state)
         reward_list.append(total_reward)
         deriv_reward_list.append(new_run.reward(state))
-        if new_run.reward(state) < 0:
-            print(" DEAD! ")
 
         if verbose:
             print(" _______________________", step, " money: ", total_reward)
@@ -239,7 +241,6 @@ def main():
             print(maze_map)
         # end while episode
 
-    print(np.mean(deriv_reward_list))
     plt.grid()
     plt.plot(reward_list, label="total_reward")
     plt.plot(deriv_reward_list, label="step reward")
