@@ -7,14 +7,16 @@ from tqdm import tqdm
 from random import randint
 from numpy import linalg as LA
 
+# map settings
 maze_max = [4, 4]
 goal = [1, 1]
 
+# settings
 discount = 0.8
-epsilon = 0.1
+epsilon_init = 0.1
+epsilon_final = 0.1  # 1: pure exploration, 0: pure exploitation
 
 police_stand_still = False
-verbose = 0
 agent_actions = 5
 train_iter = 100000
 game_iter  = 100000
@@ -24,10 +26,12 @@ initial_state = [[0, 0], [3, 3]]
 q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], agent_actions))
 n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], agent_actions))
 a_table = 100 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1]), int)
-sars_dataset = []
 
 # plot
-convergence_list = []
+smoothing = 0.001
+train_reward_list = [0]
+mean_q_table_list = []
+verbose = 0
 
 
 class EnvAndPolicy:
@@ -120,13 +124,13 @@ class EnvAndPolicy:
         index_state_time = [item for sublist in index_state_time for item in sublist]
         return tuple(index_state_time)
 
-    def sarsa(self, epsilon = epsilon):
+    def sarsa(self):
 
         # init
         next_state = initial_state
         possible_actions = self.get_actions(next_state)
         next_action = random.choice(possible_actions)
-        init_epsilon = epsilon
+        epsilon = epsilon_init
 
         for step in tqdm(range(train_iter)):
 
@@ -137,19 +141,17 @@ class EnvAndPolicy:
             # sarSa
             next_possible_states = self.get_states_given_action(state, action)
             next_state = random.choice(next_possible_states)
-            # sarsA
+            # sarsA: epsilon greedy (with init check) --> if rnd < epsilon: explore, else: exploit
+            # exploit
             next_a_index = self.get_index(next_state)
             next_action = a_table[next_a_index]
-            # epsilon greedy (with init check)
             if random.uniform(0, 1) < epsilon or next_action == 100:
+                # explore
                 possible_actions = self.get_actions(next_state)
                 next_action = random.choice(possible_actions)
 
-            # exponentially small epsilon
-            # epsilon = epsilon/(step+1)
-
-            # linearly small epsilon
-            # epsilon = init_epsilon/(step+1)
+            # moving epsilon linearly
+            epsilon += (epsilon_final - epsilon_init)/train_iter
 
             # update n_table
             matrix_index = self.get_index(state, action)
@@ -172,7 +174,10 @@ class EnvAndPolicy:
                 a_table[a_index] = random.choice(possible_best_actions)
 
             # convergence plot
-            convergence_list.append(np.mean(q_table))
+            mean_q_table_list.append(np.mean(q_table))
+            # reward plot
+            train_reward_list.append(reward*smoothing + train_reward_list[-1]*(1 - smoothing))
+
 
         return 0
 
@@ -204,7 +209,7 @@ def main():
     # plotting stuff
     total_reward = 0
     reward_list = []
-    deriv_reward_list = []
+    deriv_game_rewards_list = []
 
     # main game loop
     for step in tqdm(range(game_iter)):
@@ -229,7 +234,7 @@ def main():
         # reward check and plot
         total_reward += new_run.reward(state)
         reward_list.append(total_reward)
-        deriv_reward_list.append(new_run.reward(state))
+        deriv_game_rewards_list.append(new_run.reward(state))
 
         # verbose
         if verbose:
@@ -241,13 +246,33 @@ def main():
         # end while episode
 
     # final plots and prints
-    print("Derivative of reward given time: ", np.mean(deriv_reward_list))
-    # plt.grid()
-    # plt.plot(reward_list, label="total_reward")
-    # plt.plot(deriv_reward_list, label="step reward")
-    plt.plot(convergence_list, label="mean Q value")
+    deriv_q_values_list = []
+    for i in range(len(mean_q_table_list)-1):
+        deriv_q_values_list.append(mean_q_table_list[i+1] - mean_q_table_list[i])
+
+    print("Mean derivative of reward given time: ", np.mean(deriv_game_rewards_list))
+    print("Mean derivative of Q values: ", np.mean(deriv_q_values_list))
+    print("Last mean q_table: ", mean_q_table_list[-1])
+    plt.grid()
+    plt.suptitle("SARSA: epsilon from %f" % epsilon_init + " to %f" % epsilon_final + " (0 = pure exploit, 1 = pure explore)")
+    plt.subplot(2,2,1)
+    plt.title("Mean game reward per step = %f" %np.mean(deriv_game_rewards_list) + " (total game steps = %i)" % game_iter)
+    plt.plot(reward_list, label="total game reward")
+    plt.legend()
+
+    # plt.plot(deriv_game_rewards_list, label="step reward")
+    plt.subplot(2, 2, 2)
+    plt.title("Last mean q_table: %f" % mean_q_table_list[-1] + " (total train steps = %i)" % train_iter)
+    plt.plot(mean_q_table_list, label="mean Q_value")
+    plt.legend()
+
+    plt.subplot(2, 2, 3)
+    plt.title("Last mean train reward: %f" %train_reward_list[-1])
+    plt.plot(train_reward_list, label="train reward per step")
+    # plt.plot(deriv_q_values_list, label="deriv Q value")
     plt.legend()
     plt.show()
+
 
 if __name__ == "__main__":
     main()

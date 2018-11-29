@@ -18,7 +18,7 @@ police_stand_still = False
 end_plot = 50
 num_action = 5
 dim_dataset = 100000
-playing_iter = 100000
+game_iter = 100000
 verbose = 0
 
 # init values
@@ -26,7 +26,7 @@ q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_acti
 n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
 a_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
 sars_dataset = []
-convergence_list = []
+mean_q_table_list = []
 
 
 class EnvAndPolicy:
@@ -171,7 +171,7 @@ class EnvAndPolicy:
                 a_table[a_index] = random.choice(possible_best_actions)
 
             # convergence plot
-            convergence_list.append(np.mean(q_table))
+            mean_q_table_list.append(np.mean(q_table))
 
         return 0
 
@@ -211,10 +211,10 @@ def main():
     # init plotting stuff
     total_reward = 0
     reward_list = []
-    deriv_reward_list = []
+    game_rewards_list = []
 
     # main game loop
-    for step in tqdm(range(playing_iter)):
+    for step in tqdm(range(game_iter)):
 
         # get best action given state
         index = new_run.get_index(state)
@@ -237,7 +237,7 @@ def main():
         # plot reward and check
         total_reward += new_run.reward(state)
         reward_list.append(total_reward)
-        deriv_reward_list.append(new_run.reward(state))
+        game_rewards_list.append(new_run.reward(state))
         if new_run.reward(state) < 0:
             print(" DEAD! ")
 
@@ -251,13 +251,18 @@ def main():
     # end while episode
 
     # final plots and prints
-    print("Derivative of reward given time: ", np.mean(deriv_reward_list))
+    print("Mean reward given time: ", np.mean(game_rewards_list))
     plt.grid()
-    #plt.plot(reward_list, label="total_reward")
-    #plt.plot(deriv_reward_list, label="step reward")
-    #plt.legend()
-    #plt.show()
-    plt.plot(convergence_list, label="mean Q value")
+    plt.suptitle("Q-learning: pure exploration during training")
+    plt.subplot(1,2,1)
+    plt.title("Mean game reward per step = %f" % np.mean(np.mean(game_rewards_list)) + " (total game steps = %i)" %game_iter)
+    plt.plot(reward_list, label="total_reward")
+    # plt.plot(game_rewards_list, label="step reward")
+    plt.legend()
+    plt.subplot(1,2,2)
+    plt.title("Last mean q_table: %f" % mean_q_table_list[-1] + " (total train steps = %i)" % dim_dataset)
+
+    plt.plot(mean_q_table_list, label="mean Q value")
     plt.legend()
     plt.show()
 
