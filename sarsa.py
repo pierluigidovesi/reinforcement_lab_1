@@ -18,8 +18,8 @@ epsilon_final = 0.1  # 1: pure exploration, 0: pure exploitation
 
 police_stand_still = False
 agent_actions = 5
-train_iter = 100000
-game_iter  = 100000
+train_iter = 1000000
+game_iter  = 1000000
 
 # init values
 initial_state = [[0, 0], [3, 3]]
@@ -28,10 +28,14 @@ n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], agent_ac
 a_table = 100 * np.ones((maze_max[0], maze_max[1], maze_max[0], maze_max[1]), int)
 
 # plot
-smoothing = 0.001
-train_reward_list = [0]
-mean_q_table_list = []
 verbose = 0
+smoothing = 0.001
+redu = int(train_iter/10000)  # 10k point to plot
+
+train_reward_list = [0.0]
+mean_q_table_list = []
+best_q_table_values = [0.0]
+best_spec_q_value = [0.0]
 
 
 class EnvAndPolicy:
@@ -128,6 +132,7 @@ class EnvAndPolicy:
 
         # init
         next_state = initial_state
+        spec_index = self.get_index(initial_state)
         possible_actions = self.get_actions(next_state)
         next_action = random.choice(possible_actions)
         epsilon = epsilon_init
@@ -173,11 +178,11 @@ class EnvAndPolicy:
             else:
                 a_table[a_index] = random.choice(possible_best_actions)
 
-            # convergence plot
+            # plots
             mean_q_table_list.append(np.mean(q_table))
-            # reward plot
             train_reward_list.append(reward*smoothing + train_reward_list[-1]*(1 - smoothing))
-
+            best_q_table_values.append(best_q_table_values[-1] * (1 - smoothing) + np.max(q_table[a_index]) * smoothing)
+            best_spec_q_value.append(best_spec_q_value[-1] * (1 - smoothing) + np.max(q_table[spec_index] * smoothing))
 
         return 0
 
@@ -255,22 +260,33 @@ def main():
     print("Last mean q_table: ", mean_q_table_list[-1])
     plt.grid()
     plt.suptitle("SARSA: epsilon from %f" % epsilon_init + " to %f" % epsilon_final + " (0 = pure exploit, 1 = pure explore)")
-    plt.subplot(2,2,1)
+    plt.subplot(3, 2, 1)
     plt.title("Mean game reward per step = %f" %np.mean(deriv_game_rewards_list) + " (total game steps = %i)" % game_iter)
-    plt.plot(reward_list, label="total game reward")
+    plt.plot(reward_list[redu::], label="total game reward")
     plt.legend()
 
     # plt.plot(deriv_game_rewards_list, label="step reward")
-    plt.subplot(2, 2, 2)
+    plt.subplot(3, 2, 2)
     plt.title("Last mean q_table: %f" % mean_q_table_list[-1] + " (total train steps = %i)" % train_iter)
-    plt.plot(mean_q_table_list, label="mean Q_value")
+    plt.plot(mean_q_table_list[::redu], label="mean Q_value")
     plt.legend()
 
-    plt.subplot(2, 2, 3)
+    plt.subplot(3, 2, 3)
+    plt.title("Last mean best q_table value: %f" % best_q_table_values[-1])
+    plt.plot(best_q_table_values[::redu], label="best Q values")
+    plt.legend()
+
+    plt.subplot(3, 2, 4)
+    plt.title("Last spec best q_table: %f" % best_spec_q_value[-1])
+    plt.plot(best_spec_q_value[::redu], label="spec best Q value")
+    plt.legend()
+
+    plt.subplot(3, 2, 5)
     plt.title("Last mean train reward: %f" %train_reward_list[-1])
-    plt.plot(train_reward_list, label="train reward per step")
+    plt.plot(train_reward_list[::redu], label="train reward per step")
     # plt.plot(deriv_q_values_list, label="deriv Q value")
     plt.legend()
+
     plt.show()
 
 
