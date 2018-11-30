@@ -19,14 +19,22 @@ end_plot = 50
 num_action = 5
 dim_dataset = 100000
 game_iter = 100000
-verbose = 0
+
 
 # init values
 q_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
 n_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], num_action))
 a_table = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))
 sars_dataset = []
+
+#plot
+verbose = 0
+smoothing = 0.01
+redu = int(dim_dataset/100)
+
 mean_q_table_list = []
+best_q_table_values = [0.0]
+best_spec_q_value = [0.0]
 
 
 class EnvAndPolicy:
@@ -36,7 +44,6 @@ class EnvAndPolicy:
         self.goal = goal
         self.q_table = q_table
         self.n_table = n_table
-
 
     # possible_actions
     def get_actions(self, state):
@@ -139,6 +146,9 @@ class EnvAndPolicy:
 
     def fill_q_table(self):
 
+        state_init = [[0, 0], [3, 3]]
+        spec_index = self.get_index(state_init)
+
         for step in tqdm(sars_dataset):
 
             # fill placeholders
@@ -156,7 +166,6 @@ class EnvAndPolicy:
             # update q_table
             next_possible_actions = self.get_actions(next_state)
             q_next = np.array(np.ones(5) * -np.inf)
-            #for i in range(4):
             for next_action in next_possible_actions:
                 q_next[next_action] = q_table[self.get_index(next_state, next_action)]
             max_difference = np.max(q_next - q_table[matrix_index])
@@ -172,6 +181,10 @@ class EnvAndPolicy:
 
             # convergence plot
             mean_q_table_list.append(np.mean(q_table))
+            best_q_table_values.append(best_q_table_values[-1]*(1-smoothing) + np.max(q_table[a_index])*smoothing)
+            best_spec_q_value.append(best_spec_q_value[-1]*(1-smoothing) + np.max(q_table[spec_index]*smoothing))
+
+
 
         return 0
 
@@ -254,15 +267,22 @@ def main():
     print("Mean reward given time: ", np.mean(game_rewards_list))
     plt.grid()
     plt.suptitle("Q-learning: pure exploration during training")
-    plt.subplot(1,2,1)
+    plt.subplot(2, 2, 1)
     plt.title("Mean game reward per step = %f" % np.mean(np.mean(game_rewards_list)) + " (total game steps = %i)" %game_iter)
-    plt.plot(reward_list, label="total_reward")
+    plt.plot(reward_list[::redu], label="total_reward")
     # plt.plot(game_rewards_list, label="step reward")
     plt.legend()
-    plt.subplot(1,2,2)
+    plt.subplot(2, 2, 2)
     plt.title("Last mean q_table: %f" % mean_q_table_list[-1] + " (total train steps = %i)" % dim_dataset)
-
-    plt.plot(mean_q_table_list, label="mean Q value")
+    plt.plot(mean_q_table_list[::redu], label="mean Q value")
+    plt.legend()
+    plt.subplot(2, 2, 3)
+    plt.title("Last mean best q_table value: %f" % best_q_table_values[-1])
+    plt.plot(best_q_table_values[::redu], label="best Q values")
+    plt.legend()
+    plt.subplot(2, 2, 4)
+    plt.title("Last spec best q_table: %f" % best_spec_q_value[-1])
+    plt.plot(best_spec_q_value[::redu], label="spec best Q value")
     plt.legend()
     plt.show()
 
