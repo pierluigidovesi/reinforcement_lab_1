@@ -28,7 +28,10 @@ discount = 1 - (1 / 30)
 
 mino_stand_still = False
 verbose = 0
-end_plot = 50
+if mino_stand_still == False:
+    end_plot = 15
+else:
+    end_plot = 50
 
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1]))

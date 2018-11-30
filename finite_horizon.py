@@ -21,9 +21,9 @@ walls = [[[0, 1], [0, 2]],
 maze_max = [5, 6]
 goal = [4, 4]
 horizon = 15
-tot_episodes = 10000
-mino_stand_still = False
-verbose = 0
+tot_episodes = 1
+mino_stand_still = True
+verbose = 1
 
 # init values
 v_star = np.zeros((maze_max[0], maze_max[1], maze_max[0], maze_max[1], horizon))
