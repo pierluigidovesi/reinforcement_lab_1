@@ -168,8 +168,7 @@ class EnvAndPolicy:
             q_next = np.array(np.ones(5) * -np.inf)
             for next_action in next_possible_actions:
                 q_next[next_action] = q_table[self.get_index(next_state, next_action)]
-            max_difference = np.max(q_next - q_table[matrix_index])
-            q_table[matrix_index] += alpha*(reward + discount*max_difference)
+            q_table[matrix_index] += alpha*(reward + discount*np.max(q_next) - q_table[matrix_index])
 
             # update a_table
             best_action = np.argmax(q_table[a_index])

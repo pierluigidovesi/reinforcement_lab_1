@@ -13,8 +13,8 @@ goal = [1, 1]
 
 # settings
 discount = 0.8
-epsilon_init = 0.1
-epsilon_final = 0.1  # 1: pure exploration, 0: pure exploitation
+epsilon_init = 0.3
+epsilon_final = 0.3 # 1: pure exploration, 0: pure exploitation
 
 police_stand_still = False
 agent_actions = 5
@@ -167,7 +167,7 @@ class EnvAndPolicy:
             next_matrix_index = self.get_index(next_state, next_action)
             q_next = q_table[next_matrix_index]
             q_now = q_table[matrix_index]
-            q_table[matrix_index] += alpha*(reward + discount*(q_next-q_now))
+            q_table[matrix_index] += alpha*(reward + discount*q_next-q_now)
 
             # update a_table with init check
             a_index = self.get_index(state)
