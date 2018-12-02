@@ -17,8 +17,8 @@ discount = 0.8
 police_stand_still = False
 end_plot = 50
 num_action = 5
-dim_dataset = 100000
-game_iter = 100000
+dim_dataset = 1000000
+game_iter = 1000000
 
 
 # init values
